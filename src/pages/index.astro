@@ -3,19 +3,20 @@ import { getCollection } from 'astro:content';
 import Layout from '../layouts/Layout.astro';
 import RoleCard from '../components/RoleCard.astro';
 import EmptyState from '../components/EmptyState.astro';
-import { sortByNewest } from '../lib/jobs';
+import { getUniqueDepartments, getUniqueLocations, sortByNewest } from '../lib/jobs';
 import type { Job } from '../types/job';
 
 export const prerender = true;
 
-const entries = await getCollection('jobs');
-const jobs: Job[] = sortByNewest(
-    entries.map((entry) => ({ slug: entry.id, ...entry.data })),
+const allJobs: Job[] = sortByNewest(
+    (await getCollection('jobs')).map((entry) => ({ slug: entry.id, ...entry.data })),
 );
+const departments = getUniqueDepartments(allJobs);
+const locations = getUniqueLocations(allJobs);
 ---
 
 <Layout title="Caldova Careers — Open roles">
-  <div class="py-8">
+  <div id="role-filters" data-jobs={JSON.stringify(allJobs)} class="py-8">
     <section class="mb-10">
       <h1 class="text-4xl font-bold text-slate-100 mb-3">Build the future of medicine</h1>
       <p class="text-lg text-slate-400 max-w-2xl">
@@ -24,17 +25,69 @@ const jobs: Job[] = sortByNewest(
       </p>
     </section>
 
+    <div class="mb-8 rounded-xl border border-slate-700 bg-slate-800/50 p-4">
+      <form method="get" data-filter-form class="flex flex-col gap-4 md:flex-row md:items-end">
+        <label class="flex-1 text-sm font-medium text-slate-300">
+          <span class="mb-2 block">Department</span>
+          <select
+            name="department"
+            data-testid="department-filter"
+            aria-label="Filter roles by department"
+            class="w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-slate-100 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+          >
+            <option value="all">All departments</option>
+            {departments.map((department) => (
+              <option value={department}>{department}</option>
+            ))}
+          </select>
+        </label>
+
+        <label class="flex-1 text-sm font-medium text-slate-300">
+          <span class="mb-2 block">Location</span>
+          <select
+            name="location"
+            data-testid="location-filter"
+            aria-label="Filter roles by location"
+            class="w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-slate-100 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+          >
+            <option value="all">All locations</option>
+            {locations.map((location) => (
+              <option value={location}>{location}</option>
+            ))}
+          </select>
+        </label>
+
+        <div class="flex gap-3 md:pt-6">
+          <button
+            type="submit"
+            class="rounded-lg bg-[#1736A8] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#12309A] focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+          >
+            Apply filters
+          </button>
+          <a
+            href="/"
+            data-testid="filter-reset"
+            class="inline-flex items-center rounded-lg border border-slate-600 px-4 py-2 text-sm font-medium text-slate-200 transition hover:border-slate-500 hover:bg-slate-700/60 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+          >
+            Reset
+          </a>
+        </div>
+      </form>
+    </div>
+
     <h2 class="text-2xl font-medium mb-6 text-slate-100">Open roles</h2>
 
-    {jobs.length === 0 ? (
-      <EmptyState text="There are no open roles right now. Check back soon." />
-    ) : (
-      <div
-        class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
-        data-testid="roles-grid"
-      >
-        {jobs.map((job) => <RoleCard job={job} />)}
-      </div>
-    )}
+    <div
+      class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+      data-testid="roles-grid"
+    >
+      {allJobs.map((job) => <RoleCard job={job} />)}
+    </div>
+
+    <div hidden>
+      <EmptyState text="No roles match your selected department and location. Try another combination or reset the filters." />
+    </div>
   </div>
+
+  <script src="../scripts/role-filters.ts"></script>
 </Layout>
