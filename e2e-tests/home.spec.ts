@@ -18,6 +18,65 @@ test.describe('Open roles listing', () => {
         await expect(page.getByTestId('role-card')).toHaveCount(expectedRoleCount);
     });
 
+    test('filters by department', async ({ page }) => {
+        await page.goto('/');
+        await page.getByTestId('department-filter').selectOption({ label: 'Technology' });
+        await page.getByRole('button', { name: 'Apply filters' }).click();
+
+        const cards = page.getByTestId('role-card');
+        await expect(cards).toHaveCount(2);
+
+        const texts = await cards.allTextContents();
+        texts.forEach((text) => {
+            expect(text).toContain('Technology');
+        });
+    });
+
+    test('filters by location', async ({ page }) => {
+        await page.goto('/');
+        await page.getByTestId('location-filter').selectOption({ label: 'Woodinville, WA, USA' });
+        await page.getByRole('button', { name: 'Apply filters' }).click();
+
+        const cards = page.getByTestId('role-card');
+        await expect(cards).toHaveCount(3);
+
+        const texts = await cards.allTextContents();
+        texts.forEach((text) => {
+            expect(text).toContain('Woodinville, WA, USA');
+        });
+    });
+
+    test('applies combined department and location filters and resets them', async ({ page }) => {
+        await page.goto('/');
+        await page.getByTestId('department-filter').selectOption({ label: 'Technology' });
+        await page.getByTestId('location-filter').selectOption({ label: 'Remote (US & Canada)' });
+        await page.getByRole('button', { name: 'Apply filters' }).click();
+
+        const cards = page.getByTestId('role-card');
+        await expect(cards).toHaveCount(2);
+
+        const texts = await cards.allTextContents();
+        texts.forEach((text) => {
+            expect(text).toContain('Technology');
+            expect(text).toContain('Remote (US & Canada)');
+        });
+
+        await page.getByTestId('filter-reset').click();
+        await expect(page.getByTestId('role-card')).toHaveCount(expectedRoleCount);
+    });
+
+    test('shows a clear empty state when filters match no roles', async ({ page }) => {
+        await page.goto('/');
+        await page.getByTestId('department-filter').selectOption({ label: 'Technology' });
+        await page.getByTestId('location-filter').selectOption({ label: 'Woodinville, WA, USA' });
+        await page.getByRole('button', { name: 'Apply filters' }).click();
+
+        await expect(page.getByTestId('empty-state')).toBeVisible();
+        await expect(page.getByTestId('empty-state-text')).toContainText(
+            'No roles match your selected department and location',
+        );
+    });
+
     test('links through to a role detail page', async ({ page }) => {
         await page.goto('/');
         const firstCard = page.getByTestId('role-card').first();
